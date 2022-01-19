@@ -1,11 +1,11 @@
-import {Block, StringBlock, ProgramBlock, AttributesType, ArrayOfBlockBodyType} from "./type";
+import {Block, StringBlock, ProgramBlock, AttributesType, ArrayOfBlockBodyType, BlockBodyType} from "./type";
 import { Lexer } from "../Lexer/lexer";
 import { Token, TokenKind, Tokens } from "../Lexer/token";
 import { err_message } from "../Basic/error";
 import { exit } from "process";
 import util from 'util';
 
-enum Loop{
+export enum Loop{
     Continue,
     Break
 }
@@ -15,6 +15,7 @@ export class Ast{
     private _filename: string;
     private _anonNumber: number;
     private _depth : number;
+    private _program? : ProgramBlock;
 
     constructor(lexer : Lexer){
         lexer.parse();
@@ -61,11 +62,14 @@ export class Ast{
         return this._tok();
     }
 
+    get program() : ProgramBlock {
+        if(!this._program) this.run();
+        return this._program!;
+    }
+
     run() : void{
-        let program = new ProgramBlock();
-        this.parseBlock(program);
-        // console.log(util.inspect(program, {showHidden: false, depth: null, colors: true}));
-        console.log(JSON.stringify(program));
+        this._program = new ProgramBlock();
+        this.parseBlock(this._program);
     }
 
     parseBlock(block: Block) : void{
@@ -263,4 +267,61 @@ export class Ast{
         this._next();
     }
 
+    show() : void{
+        if(this._program){
+            console.log(util.inspect(this._program, {showHidden: false, depth: null, colors: true}));
+            // console.log(JSON.stringify(this._program));
+        }
+    }
+
+}
+
+export class AstWalker{
+    private _program : ProgramBlock;
+
+    constructor(ast : Ast){
+        this._program = ast.program;
+    }
+
+    private _forEach(parentBlockOrString : BlockBodyType, depth: number, pred : (block : string, attributes? : AttributesType, depth?:number) => Loop, atts : AttributesType) : boolean{
+        if(typeof(parentBlockOrString) === "string"){
+            if(pred(parentBlockOrString, atts, depth) == Loop.Break) return false;
+            return true;
+        }
+        const parentBlock = parentBlockOrString as Block;
+        const natts = {...atts, ...parentBlock.attrs};
+        for(let b of parentBlock.body){
+            if( !this._forEach(b, depth + 1, pred, natts) ) return false;
+        }
+        return true;
+    }
+
+    forEach(pred : (block : String, attributes? : AttributesType, depth?:number) => Loop) : void{
+        const body = this._program.body;
+        for(let b of body){
+            if( !this._forEach(b, 0, pred, {}) ) return;
+        }
+    }
+
+    private _match(blockName: string, parentBlockOrString: BlockBodyType) : Block | null{
+        if(typeof(parentBlockOrString) === "string") return null;
+        
+        const parentBlock = parentBlockOrString as Block;
+        if(parentBlock.isKind(blockName)) return parentBlock;
+        
+        for(let b of parentBlock.body){
+            const temp = this._match(blockName, b);
+            if(temp) return temp;
+        }
+        return null;
+    }
+
+    match(blockName: string) : Block | null{
+        const body = this._program.body;
+        for(let b of body){
+            const temp = this._match(blockName, b);
+            if(temp) return temp;
+        }
+        return null;
+    }
 }
