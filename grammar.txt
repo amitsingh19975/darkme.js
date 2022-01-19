@@ -1,0 +1,22 @@
+
+StringBlock := String
+
+block := block | StringBlock
+attribute := attribute | '"'? KEY '"'? (':' '"'? VALUE '"'?)?
+
+BLOCK_NAME [attribute...]{
+	
+}
+
+list[attribute...]{
+	[0] = ,
+	[1] = ,
+	[.] = ,
+	[.] = ,
+	[.] = ,
+	[n] = ,
+}
+
+code[attribute...]{
+	
+}

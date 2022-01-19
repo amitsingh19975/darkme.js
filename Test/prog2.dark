@@ -1,0 +1,21 @@
+
+header[class: "header", id: "Blink"]{
+	This is a $[bold]{header} for the document
+	$list[label: "Fruits"]{
+		$[0]{ Apple }
+		$[1]{ Orange }
+		$[2]{ Tomato }
+		$[3]{ Mango }
+	}
+}
+
+list[label: "Fruits"]{
+	$[0]{ Apple }
+	$[1]{ Orange }
+	$[2]{ Tomato }
+	$[3]{ Mango }
+}
+
+code[lang: "cpp"]{
+	auto t = tensor<float>(extents<1,2,3,4>{{}{{{}}}{}},1.f);
+}
