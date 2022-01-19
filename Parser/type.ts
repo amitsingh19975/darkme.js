@@ -1,4 +1,4 @@
-export type BlockBodyType = String | Block;
+export type BlockBodyType = string | Block;
 export type ArrayOfBlockBodyType = BlockBodyType [];
 export type AttributesType = {[key : string] : string };
 
@@ -29,6 +29,19 @@ export class Block {
 
     addBlock(block : BlockBodyType) : void {
         this._body.push(block);
+    }
+
+    match(kind: string) : Block | null{
+        if(this.isKind(kind))
+            return this;
+
+        const children = this.body as ArrayOfBlockBodyType;
+        for(let el of children){
+            if(typeof(el) == "string") return null;
+            const temp = el.match(kind);
+            if(temp) return temp;
+        }
+        return null;
     }
 }
 

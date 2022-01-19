@@ -303,25 +303,7 @@ export class AstWalker{
         }
     }
 
-    private _match(blockName: string, parentBlockOrString: BlockBodyType) : Block | null{
-        if(typeof(parentBlockOrString) === "string") return null;
-        
-        const parentBlock = parentBlockOrString as Block;
-        if(parentBlock.isKind(blockName)) return parentBlock;
-        
-        for(let b of parentBlock.body){
-            const temp = this._match(blockName, b);
-            if(temp) return temp;
-        }
-        return null;
-    }
-
     match(blockName: string) : Block | null{
-        const body = this._program.body;
-        for(let b of body){
-            const temp = this._match(blockName, b);
-            if(temp) return temp;
-        }
-        return null;
+        return this._program.match(blockName);
     }
 }
