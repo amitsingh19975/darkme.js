@@ -2,15 +2,6 @@
 
 Parser for custom readme format for it to be used by javascript to generate custom readme pages.
 
-## Language Grammar
-
-StringBlock := String
-
-block := block | StringBlock
-attribute := attribute | '"'? KEY '"'? (':' '"'? VALUE '"'?)?
-
-BLOCK_NAME [attribute...]{ String | '$' block }
-
 ## Example
 
 ### Program
