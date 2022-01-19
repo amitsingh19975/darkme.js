@@ -209,14 +209,15 @@ export class Ast{
     
     parseBodyAsString(): string{
         let text: string = "";
-
+        let escape = false;
         while(!this._tokens.isEmpty()){
-            if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
+            if(this._isKind(TokenKind.Escape)) escape = true;
+            else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
             else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
                 --this._depth;
                 text += "}";
             }
-            else if(this._isKind(TokenKind.Dollar)) return text;
+            else if(!escape && this._isKind(TokenKind.Dollar)) return text;
             else if(this._isKind(TokenKind.LeftCurlyBrace)) {
                 ++this._depth;
                 text += "{";
@@ -224,6 +225,7 @@ export class Ast{
                 text += this.get_prefix(this._text());
             }else{
                 text += this._text();
+                escape = false;
             }
             // console.log(text);
             this._next(false);
