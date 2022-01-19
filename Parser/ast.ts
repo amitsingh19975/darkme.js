@@ -211,7 +211,7 @@ export class Ast{
         let text: string = "";
         let escape = false;
         while(!this._tokens.isEmpty()){
-            if(this._isKind(TokenKind.Escape)) escape = true;
+            if(this._isKind(TokenKind.Escape)) escape = !escape;
             else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
             else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
                 --this._depth;
