@@ -283,26 +283,6 @@ export class AstWalker{
         this._program = ast.program;
     }
 
-    private _forEach(parentBlockOrString : BlockBodyType, depth: number, pred : (block : string, attributes? : AttributesType, depth?:number) => Loop, atts : AttributesType) : boolean{
-        if(typeof(parentBlockOrString) === "string"){
-            if(pred(parentBlockOrString, atts, depth) == Loop.Break) return false;
-            return true;
-        }
-        const parentBlock = parentBlockOrString as Block;
-        const natts = {...atts, ...parentBlock.attrs};
-        for(let b of parentBlock.body){
-            if( !this._forEach(b, depth + 1, pred, natts) ) return false;
-        }
-        return true;
-    }
-
-    forEach(pred : (block : String, attributes? : AttributesType, depth?:number) => Loop) : void{
-        const body = this._program.body;
-        for(let b of body){
-            if( !this._forEach(b, 0, pred, {}) ) return;
-        }
-    }
-
     match(blockName: string) : Block | null{
         return this._program.match(blockName);
     }
