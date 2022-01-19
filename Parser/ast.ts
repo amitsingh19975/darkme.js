@@ -283,7 +283,7 @@ export class AstWalker{
         this._program = ast.program;
     }
 
-    match(blockName: string) : Block | null{
-        return this._program.match(blockName);
+    match(kind: string) : Block | null{
+        return this._program.match(kind);
     }
 }
