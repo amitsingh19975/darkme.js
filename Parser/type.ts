@@ -43,6 +43,17 @@ export class Block {
         }
         return null;
     }
+
+    getAllChildernKinds() : string[]{
+        if(this.isKind("@String")) return [];
+
+        let kinds : string[] = [];
+        for(let el of this._body){
+            if(typeof(el) === "string") continue;
+            kinds = [...kinds, el._kind, ... el.getAllChildernKinds()];
+        }
+        return kinds;
+    }
 }
 
 export class ProgramBlock extends Block{

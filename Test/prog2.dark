@@ -16,6 +16,6 @@ list[label: "Fruits"]{
 	$[3]{ Mango }
 }
 
-code[lang: "cpp"]{
-	auto t = tensor<float>(extents<1,2,3,4>{{}{{{}}}{}},1.f);
+code[lang: "cpp", @escape]{
+	auto t = tensor<float>(extents<1,2,3,4>\{{}{{{}}}{}},1.f);
 }

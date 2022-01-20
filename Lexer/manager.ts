@@ -65,7 +65,7 @@ export class FileManager {
         if(!this.isEmpty()){
             return this._fileBuffer![this._curr_pos];
         }
-        return "\0";
+        return "EOF";
     }
 
     skipWhile(pred : (char : string) => boolean) : number {

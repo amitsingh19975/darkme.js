@@ -68,7 +68,7 @@ export class Lexer{
             
             start = end;
         }
-        this.push_token(start, TokenKind.EOF, "\0");
+        this.push_token(start, TokenKind.EOF, "EOF");
         return true;
     }
 }

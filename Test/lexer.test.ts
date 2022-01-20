@@ -39,7 +39,7 @@ test("Testing lexer", () => {
         make_token(TokenKind.Text, "list", 39, 43, 8, 3),
         make_token(TokenKind.RightSquareBracket, "]", 43, 44, 9, 3),
         make_token(TokenKind.Arrow, "->", 44, 46, 10, 3),
-        make_token(TokenKind.EOF, "\0", 46, 47, 10, 3),
+        make_token(TokenKind.EOF, "EOF", 46, 47, 10, 3),
     ];
     expect(lex.tokens).toStrictEqual(prog_tokens);
 });

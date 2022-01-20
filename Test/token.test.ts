@@ -20,7 +20,7 @@ test("Testing String to Token" , ()=>{
     // expect( StringToToken["Text"] ).toBe(TokenKind.Text);
     // expect( StringToToken["Keyword"] ).toBe(TokenKind.Keyword);
     // expect( StringToToken["Number"] ).toBe(TokenKind.Number);
-    expect( StringToToken["\0"] ).toBe(TokenKind.EOF);
+    expect( StringToToken["EOF"] ).toBe(TokenKind.EOF);
     expect( StringToToken["\\"] ).toBe(TokenKind.Escape);
     expect( StringToToken["\n"] ).toBe(TokenKind.Newline);
     expect( StringToToken["$"] ).toBe(TokenKind.Dollar);

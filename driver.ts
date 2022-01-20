@@ -6,7 +6,9 @@ import { AttributesType, Block } from "./Parser/type";
 //     return num1 + num2;
 // }
 const ast = new Ast(new Lexer(new Filename("./Test/prog2.dark")))
-const astWalker = new AstWalker(ast);
-console.log(astWalker.match("header"));
+ast.run();
+ast.show();
+// const astWalker = new AstWalker(ast);
+// console.log(astWalker.match("header")?.getAllChildernKinds());
 // console.log(lex.tokens);
 // console.log(JSON.stringify(lex.tokens));

@@ -23,7 +23,7 @@ export enum TokenKind{
     Escape = "\\",
     Newline = "\n",
     Space = ' ',
-    EOF = "\0"
+    EOF = "EOF"
 }
 
 export const StringToToken : {[key : string] : TokenKind} = {
@@ -50,7 +50,7 @@ export const StringToToken : {[key : string] : TokenKind} = {
     // "Text"          : TokenKind.Text,
     // "Keyword"       : TokenKind.Keyword,
     // "Number"        : TokenKind.Number,
-    "\0"            : TokenKind.EOF,
+    "EOF"            : TokenKind.EOF,
 }
 
 export class Token{
@@ -134,8 +134,8 @@ export class Tokens{
 
     next(shouldSkipWhiteSpace : boolean = true) : Token{
         if(shouldSkipWhiteSpace) this.skipWhileSpace();
-        this._curr_pos = Math.min(this._token.length - 1, this._curr_pos + 1);
-        return this._token[this._curr_pos];
+        if(this.isEmpty()) return this._token[this._token.length - 1];
+        return this._token[++this._curr_pos];
     }
 
     peek(steps : number = 1) : Token | null{

@@ -16,12 +16,14 @@ export class Ast{
     private _anonNumber: number;
     private _depth : number;
     private _program? : ProgramBlock;
+    private _shouldEscapeEverythingInsideBlock: boolean;
 
     constructor(lexer : Lexer){
         lexer.parse();
         this._anonNumber = 0;
         this._depth = 0;
         this._tokens = new Tokens(lexer.tokens);
+        this._shouldEscapeEverythingInsideBlock = false;
         if(lexer.filename){
             this._filename = lexer.filename;
         }else{
@@ -86,7 +88,9 @@ export class Ast{
         let body : ArrayOfBlockBodyType = [];
         this._next();
         this.parseAttributes(attrs);
+        if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
         this.parseBody(body);
+        this._shouldEscapeEverythingInsideBlock = false;
         block.addBlock(new Block(tok.text, body, attrs));
         this.parseBlock(block);
     }
@@ -106,7 +110,9 @@ export class Ast{
         let body : ArrayOfBlockBodyType = [];
 
         this.parseAttributes(attrs);
+        if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
         this.parseBody(body);
+        this._shouldEscapeEverythingInsideBlock = false;
         parentBody.push(new Block(blockName, body, attrs));
     }
     
@@ -211,24 +217,29 @@ export class Ast{
         let text: string = "";
         let escape = false;
         while(!this._tokens.isEmpty()){
-            if(this._isKind(TokenKind.Escape)) {
+            if(this._depth < 0){
+                this.err(this._tok(), "found extra '}', or maybe you are missing '{'");
+            }
+
+            if(this._isKind(TokenKind.Escape) && !this._shouldEscapeEverythingInsideBlock) {
                 escape = !escape;
                 if(!escape) text += '\\';
-            }
-            else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
-            else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
-                --this._depth;
-                text += "}";
-            }
-            else if(!escape && this._isKind(TokenKind.Dollar)) return text;
-            else if(this._isKind(TokenKind.LeftCurlyBrace)) {
-                ++this._depth;
-                text += "{";
+            }else if(!escape){
+                if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
+                else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
+                    --this._depth;
+                    text += "}";
+                }
+                else if(this._isKind(TokenKind.Dollar) && !this._shouldEscapeEverythingInsideBlock) return text;
+                else if(this._isKind(TokenKind.LeftCurlyBrace)) {
+                    ++this._depth;
+                    text += "{";
+                }else{
+                    text += this._text();
+                }
+                escape = false;
             }else if(this._isKind(TokenKind.Space)){
                 text += this.get_prefix(this._text());
-            }else{
-                text += this._text();
-                escape = false;
             }
             // console.log(text);
             this._next(false);
@@ -258,7 +269,7 @@ export class Ast{
                 prefix = "";
             }
 
-            if(this._isKind(TokenKind.Dollar)){
+            if(!this._shouldEscapeEverythingInsideBlock && this._isKind(TokenKind.Dollar)){
                 this._next();
                 this.parseInterpolation(blocks);
                 // this._next(false);
