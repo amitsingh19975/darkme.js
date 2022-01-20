@@ -71,6 +71,7 @@ export class Token{
     set kind(kind : TokenKind) { this._kind = kind; }
 
     isKind(kind : TokenKind) : boolean{ return this._kind == kind; }
+    isSpace() : boolean { return this.isKind(TokenKind.Space); }
 }
 
 const escapeString = (text:string) =>{
@@ -106,11 +107,16 @@ const escapeString = (text:string) =>{
 export class Tokens{
     private _token : Array<Token>;
     private _curr_pos: number;
+    private _snapshot: number;
 
     constructor(token : Array<Token>){
         this._token = token;
         this._curr_pos = 0;
+        this._snapshot = 0;
     }
+
+    takeSnapshot() { this._snapshot = this._curr_pos; }
+    restore() { this._curr_pos = this._snapshot; }
 
     skipWhileSpace() : void {
         while(this._token[this._curr_pos].isKind(TokenKind.Space))

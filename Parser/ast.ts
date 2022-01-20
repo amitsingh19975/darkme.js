@@ -81,17 +81,19 @@ export class Ast{
         this._skipWhiteSpace();
         const tok = this._tok();
         if(!tok.isKind(TokenKind.Text)){
-            this.err(this._tok(), "no block declaration found");
+            this.err(this._tok(), "no block declaration found at top level");
         }
+
+        const blockName = this._tok().text;
     
         let attrs : AttributesType = {};
         let body : ArrayOfBlockBodyType = [];
         this._next();
         this.parseAttributes(attrs);
         if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
-        this.parseBody(body);
+        this.parseBody(body,blockName);
         this._shouldEscapeEverythingInsideBlock = false;
-        block.addBlock(new Block(tok.text, body, attrs));
+        block.addBlock(new Block(blockName, body, attrs));
         this.parseBlock(block);
     }
 
@@ -111,7 +113,7 @@ export class Ast{
 
         this.parseAttributes(attrs);
         if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
-        this.parseBody(body);
+        this.parseBody(body,blockName);
         this._shouldEscapeEverythingInsideBlock = false;
         parentBody.push(new Block(blockName, body, attrs));
     }
@@ -209,45 +211,65 @@ export class Ast{
         }
         return text;
     }
+
+    parseEndBlock(blockKind: string): boolean{
+        this._tokens.takeSnapshot();
+        this._next();
+        this._skipWhiteSpace();
+        
+        if(this._tok().isKind(TokenKind.LeftSquareBracket)){
+            this._next()
+            this._skipWhiteSpace();
+            if(this._text() == blockKind){
+                this._next()
+                this._skipWhiteSpace();
+                if(this._tok().isKind(TokenKind.RightSquareBracket)){
+                    return true;
+                }
+            }
+        }
+        this._tokens.restore();
+        return false;
+    }
     
-    parseBodyAsString(): string{
+    parseBodyAsString(blockKind : string): [string,boolean]{
         let text: string = "";
-        let escape = false;
+        let hasEndBlock = false;
         while(!this._tokens.isEmpty()){
             if(this._depth < 0){
                 this.err(this._tok(), "found extra '}', or maybe you are missing '{'");
             }
 
             if(this._isKind(TokenKind.Escape) && !this._shouldEscapeEverythingInsideBlock) {
-                escape = !escape;
-                if(!escape) text += '\\';
-            }else if(!escape){
-                if(this._isKind(TokenKind.RightCurlyBrace) && this._depth == 0) break;
-                else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
-                    --this._depth;
-                    text += "}";
-                }
-                else if(this._isKind(TokenKind.Dollar) && !this._shouldEscapeEverythingInsideBlock) return text;
-                else if(this._isKind(TokenKind.LeftCurlyBrace)) {
-                    ++this._depth;
-                    text += "{";
-                }else{
-                    text += this._text();
-                }
-                escape = false;
+                this._next(false);
+                text += this._text();
+                
+            }else if(this._isKind(TokenKind.RightCurlyBrace)) {
+                hasEndBlock = this.parseEndBlock(blockKind);
+                if( hasEndBlock ) break;
+                if(!this._shouldEscapeEverythingInsideBlock && this._depth == 0) break;
+                text += "}";
+            }else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
+                --this._depth;
+                text += "}";
+            }else if(this._isKind(TokenKind.Dollar) && !this._shouldEscapeEverythingInsideBlock) {
+                return [text,false];
+            }else if(this._isKind(TokenKind.LeftCurlyBrace)) {
+                ++this._depth;
+                text += "{";
             }else if(this._isKind(TokenKind.Space)){
                 text += this.get_prefix(this._text());
+            }else{
+                text += this._text();
             }
             // console.log(text);
             this._next(false);
         }
-        if(!this._isKind(TokenKind.RightCurlyBrace)){
-            this.err(this._tok(), `expected '}', but found '${this._text(true)}'`);
-        }
-        return text;
+        
+        return [text,hasEndBlock];
     }
     
-    parseBody(blocks: ArrayOfBlockBodyType): void{
+    parseBody(blocks: ArrayOfBlockBodyType, blockKind: string): void{
         if(!this._isKind(TokenKind.LeftCurlyBrace)){
             this.err(this._tok(), `expected '{', but found '${this._text(true)}'`);
         }
@@ -258,11 +280,15 @@ export class Ast{
             prefix = this.get_prefix(this._text());
             this._skipWhiteSpace();
         }
-
+        let hasEndBlock = false;
         this._while(TokenKind.RightCurlyBrace, (tok : Token) => {
-            const temp = this.parseBodyAsString();
-            if(temp.trim().length != 0){
-                blocks.push(new StringBlock(prefix + temp, {}));
+            const temp = this.parseBodyAsString(blockKind);
+            const text = temp[0];
+            hasEndBlock = temp[1];
+            // console.log(text,hasEndBlock);
+
+            if(text.trim().length != 0){
+                blocks.push(new StringBlock(prefix + text, {}));
                 prefix = "";
             }
 
@@ -271,13 +297,19 @@ export class Ast{
                 this.parseInterpolation(blocks);
                 // this._next(false);
             }
+            if(this._tok().isKind(TokenKind.RightSquareBracket)) return Loop.Break;
             return Loop.Continue;
         });
 
-        if(!this._isKind(TokenKind.RightCurlyBrace)){
+        const isCurly = this._isKind(TokenKind.RightCurlyBrace);
+        const isSq = this._isKind(TokenKind.RightSquareBracket);
+        if(!isSq && hasEndBlock)
+            this.err(this._tok(), `expected ']', but found '${this._text(true)}'`);
+        else if (!isCurly && !hasEndBlock) 
             this.err(this._tok(), `expected '}', but found '${this._text(true)}'`);
-        }
+
         this._next();
+        this._skipWhiteSpace();
     }
 
     show() : void{
