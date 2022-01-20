@@ -9,12 +9,7 @@ header[class: "header", id: "Blink"]{
 	}
 }
 
-list[label: "Fruits"]{
-	$[0]{ Apple }
-	$[1]{ Orange }
-	$[2]{ Tomato }
-	$[3]{ Mango }
-}
+list{}
 
 code[lang: "cpp", @escape]{
 	auto t = tensor<float>(extents<1,2,3,4>\{{}{{{}}}{}},1.f);

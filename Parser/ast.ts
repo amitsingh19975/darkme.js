@@ -177,9 +177,6 @@ export class Ast{
     parseAttributes(attrs: AttributesType): void{
         if(!this._isKind(TokenKind.LeftSquareBracket)){
             this._skipWhiteSpace()
-            if(!this._isKind(TokenKind.LeftCurlyBrace)){
-                this.err(this._tok(), `expected '{', but found '${this._text(true)}'`);
-            }
             return;
         }
 
