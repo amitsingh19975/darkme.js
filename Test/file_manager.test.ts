@@ -1,5 +1,5 @@
 import { FileManager, Filename } from "../Lexer/manager";
-import { isWhiteSpace, isNewline } from "../Basic/utility"
+import { isWhiteSpace, WhiteSpace } from "../Basic/utility"
 
 test("Testing File Manager [Reading File]", () => {
     const mang = new FileManager(new Filename("./Test/prog1.dark"));
@@ -60,7 +60,7 @@ test("Testing File Manager [Checking New Line]", () => {
     const mang = new FileManager(prog);
     expect(mang.size()).toBe(prog.length);
     expect(mang.isEmpty()).toBe(false);
-    expect(isNewline(mang.currChar())).toBe(true);
+    expect(isWhiteSpace(mang.currChar(),WhiteSpace.Newline)).toBe(true);
 });
 
 test("Testing File Manager [Consume Char]", () => {

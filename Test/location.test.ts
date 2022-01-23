@@ -3,10 +3,9 @@ import { Span, Location } from "../Basic/location";
 test("Testing Span", () => {
     const s1 = new Span(0, 10);
     const s2 = new Span(3, 4);
-    expect([s1.start,s1.end]).toStrictEqual([0,10]);
-    expect([s2.start,s2.end]).toStrictEqual([3,4]);
+    expect([s1.start,s1.len]).toStrictEqual([0,10]);
+    expect([s2.start,s2.len]).toStrictEqual([3,4]);
     expect(s1).toStrictEqual(new Span(0,10));
-    expect(s1.size()).toStrictEqual(10);
 });
 
 test("Testing Location", () => {

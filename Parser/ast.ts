@@ -83,16 +83,24 @@ export class Ast{
         if(!tok.isKind(TokenKind.Text)){
             this.err(this._tok(), "no block declaration found at top level");
         }
-
-        const blockName = this._tok().text;
-    
+        
         let attrs : AttributesType = {};
         let body : ArrayOfBlockBodyType = [];
+        let blockName = this._tok().text;
+
+        if(blockName[0] === '!') {
+            attrs['@escape'] = '';
+            blockName = blockName.substring(1);
+        }
+    
         this._next();
         this.parseAttributes(attrs);
+
+
         if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
         this.parseBody(body,blockName);
         this._shouldEscapeEverythingInsideBlock = false;
+
         block.addBlock(new Block(blockName, body, attrs));
         this.parseBlock(block);
     }
@@ -101,20 +109,28 @@ export class Ast{
         const tok = this._tok();
         let blockName = "";
         this._skipWhiteSpace();
-        if(tok.isKind(TokenKind.Text)){
-            blockName = tok.text;
-            this._next();
-        }else{
-            blockName = `@anonymousBlock${this._anonNumber++}`;
-        }
-    
+        
         let attrs : AttributesType = {};
         let body : ArrayOfBlockBodyType = [];
 
+        if(tok.isKind(TokenKind.Text)){
+            blockName = tok.text;
+            this._next();
+            if(blockName[0] === '!') {
+                attrs['@escape'] = '';
+                blockName = blockName.substring(1);
+            }
+        }else{
+            blockName = `@__anonymousBlock${this._anonNumber++}`;
+        }
+    
+
         this.parseAttributes(attrs);
-        if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
+
+        if("@escape" in attrs) 
+            this.err(this._tok(), "escape is not allowed inside block")
         this.parseBody(body,blockName);
-        this._shouldEscapeEverythingInsideBlock = false;
+
         parentBody.push(new Block(blockName, body, attrs));
     }
     
@@ -257,7 +273,7 @@ export class Ast{
             }else if(this._isKind(TokenKind.LeftCurlyBrace)) {
                 ++this._depth;
                 text += "{";
-            }else if(this._isKind(TokenKind.Space)){
+            }else if(this._isKind(TokenKind.WhiteSpace)){
                 text += this.get_prefix(this._text());
             }else{
                 text += this._text();
@@ -274,9 +290,10 @@ export class Ast{
             this.err(this._tok(), `expected '{', but found '${this._text(true)}'`);
         }
         this._next();
+        const tempDepth = this._depth;
         
         let prefix = "";
-        if(this._isKind(TokenKind.Space)){
+        if(this._isKind(TokenKind.WhiteSpace)){
             prefix = this.get_prefix(this._text());
             this._skipWhiteSpace();
         }
@@ -297,17 +314,19 @@ export class Ast{
                 this.parseInterpolation(blocks);
                 // this._next(false);
             }
-            if(this._tok().isKind(TokenKind.RightSquareBracket)) return Loop.Break;
+            const isCurly = this._isKind(TokenKind.RightCurlyBrace);
+            if( hasEndBlock || isCurly ) return Loop.Break;
             return Loop.Continue;
         });
-
+        
         const isCurly = this._isKind(TokenKind.RightCurlyBrace);
         const isSq = this._isKind(TokenKind.RightSquareBracket);
         if(!isSq && hasEndBlock)
             this.err(this._tok(), `expected ']', but found '${this._text(true)}'`);
         else if (!isCurly && !hasEndBlock) 
             this.err(this._tok(), `expected '}', but found '${this._text(true)}'`);
-
+        
+        this._depth = tempDepth;
         this._next();
         this._skipWhiteSpace();
     }

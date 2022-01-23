@@ -1,16 +1,15 @@
 export class Span{
     private _start: number = 0;
-    private _end : number = 0
+    private _len : number = 0
 
     constructor(start: number, end: number){
         this._start = start;
-        this._end = end;
+        this._len = end;
     }
 
     get start() { return this._start; }
-    get end() { return this._end; }
-
-    size() : number { return this._end - this._start; }
+    get len() { return this._len; }
+    set len(len : number) { this._len = len; }
 }
 
 export class Location{

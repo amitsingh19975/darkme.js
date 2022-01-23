@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import path from "path";
-import { isWhiteSpace, isNewline } from "../Basic/utility"
+import { isWhiteSpace, WhiteSpace } from "../Basic/utility"
 
 export class Filename{
     private _name : string;
@@ -45,16 +45,14 @@ export class FileManager {
 
     consumeChar() : boolean {
         if(!this.isEmpty()){
-            ++this._curr_pos;
-            if(!this.isEmpty()){
-                const c = this._fileBuffer![this._curr_pos];
-                if(isNewline(c)){
-                    ++this._curr_line;
-                    this._curr_col = 1;
-                }else{
-                    ++this._curr_col;
-                }
+            const c = this._fileBuffer![this._curr_pos];
+            if(isWhiteSpace(c,WhiteSpace.Newline)){
+                ++this._curr_line;
+                this._curr_col = 1;
+            }else{
+                ++this._curr_col;
             }
+            ++this._curr_pos;
             return true;
         }else{
             return false;

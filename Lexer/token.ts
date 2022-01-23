@@ -1,4 +1,5 @@
 import { Location, Span } from "../Basic/location";
+import { isWhiteSpace, WhiteSpace } from "../Basic/utility";
 export enum TokenKind{
     Unknown = "Unknown",
     Identifier = "Identifier",
@@ -21,8 +22,7 @@ export enum TokenKind{
     Equal = "=",
     Dollar = "$",
     Escape = "\\",
-    Newline = "\n",
-    Space = ' ',
+    WhiteSpace = ' ',
     EOF = "EOF"
 }
 
@@ -43,8 +43,7 @@ export const StringToToken : {[key : string] : TokenKind} = {
     "="             : TokenKind.Equal,
     "$"             : TokenKind.Dollar,
     "\\"            : TokenKind.Escape,
-    "\n"            : TokenKind.Newline,
-    " "             : TokenKind.Space,
+    " "             : TokenKind.WhiteSpace,
     // "Unknown"       : TokenKind.Unknown,
     // "Identifier"    : TokenKind.Identifier,
     // "Text"          : TokenKind.Text,
@@ -57,21 +56,25 @@ export class Token{
     private _kind : TokenKind = TokenKind.Unknown;
     private _text : string;
     private _loc : Location;
+    private _rep : number;
 
-    constructor(kind : TokenKind, text : string, loc : Location){
+    constructor(kind : TokenKind, text : string, loc : Location, rep: number = 0){
         this._kind = kind;
         this._text = text;
         this._loc = loc;
+        this._rep = rep;
     }
 
     get kind(){ return this._kind; }
     get text(){ return this._text; }
     get loc(){ return this._loc; }
+    get rep(){ return this._rep; }
 
     set kind(kind : TokenKind) { this._kind = kind; }
 
     isKind(kind : TokenKind) : boolean{ return this._kind == kind; }
-    isSpace() : boolean { return this.isKind(TokenKind.Space); }
+    isWhiteSpace(kind? : WhiteSpace) : boolean { return this.isKind(TokenKind.WhiteSpace) && isWhiteSpace(this._text, kind); }
+    isNewLine() : boolean { return this.isWhiteSpace( WhiteSpace.Newline ); }
 }
 
 const escapeString = (text:string) =>{
@@ -119,7 +122,7 @@ export class Tokens{
     restore() { this._curr_pos = this._snapshot; }
 
     skipWhileSpace() : void {
-        while(this._token[this._curr_pos].isKind(TokenKind.Space))
+        while(this._token[this._curr_pos].isWhiteSpace())
             ++this._curr_pos;
     }
 
@@ -154,6 +157,26 @@ export class Tokens{
 
     isEmpty() : boolean{
         return this._token.length <= this._curr_pos;
+    }
+
+    match(pattern : Token[], skipWhiteSpace : boolean = true) : boolean{
+        this.takeSnapshot();
+        const len = this._token.length - this._curr_pos;
+        if(pattern.length >= len) {
+            this.restore();
+            return false;
+        }
+        for(let t of pattern){
+            if(skipWhiteSpace) this.skipWhileSpace();
+            if(this.isEmpty() || t != this.currTok()) {
+                this.restore();
+                return false;
+            }
+
+            this.next();
+        }
+
+        return true;
     }
 }
 

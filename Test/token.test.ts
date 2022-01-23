@@ -22,9 +22,8 @@ test("Testing String to Token" , ()=>{
     // expect( StringToToken["Number"] ).toBe(TokenKind.Number);
     expect( StringToToken["EOF"] ).toBe(TokenKind.EOF);
     expect( StringToToken["\\"] ).toBe(TokenKind.Escape);
-    expect( StringToToken["\n"] ).toBe(TokenKind.Newline);
     expect( StringToToken["$"] ).toBe(TokenKind.Dollar);
-    expect( StringToToken[" "] ).toBe(TokenKind.Space);
+    expect( StringToToken[" "] ).toBe(TokenKind.WhiteSpace);
     expect( StringToToken[";"] ).toBe(TokenKind.SemiColon);
 });
 
