@@ -4,10 +4,77 @@ import { Token, TokenKind, Tokens } from "../Lexer/token";
 import { err_message } from "../Basic/error";
 import { exit } from "process";
 import util from 'util';
+import { Location, Span } from "../Basic/location";
 
 export enum Loop{
     Continue,
     Break
+}
+
+enum IntrinsicKind{
+    None = 0,
+    Escape = 1,
+}
+class Intrinsic{
+    private static _strToKind : {[key : string] : IntrinsicKind};
+    private _data : number;
+    private _dataSnap : number;
+
+    constructor(){
+        Intrinsic._strToKind = {
+            "@escape" : IntrinsicKind.Escape
+        };
+        this._data = IntrinsicKind.None;
+        this._dataSnap = IntrinsicKind.None;
+    }
+
+    setBit(attribute : string | IntrinsicKind) {
+        if(typeof(attribute) === "string"){
+            if(attribute in Intrinsic._strToKind)
+                this._data |= Intrinsic._strToKind[attribute];
+        }else{
+            this._data |= attribute;
+        }
+    }
+
+    clearBit(attribute : string | IntrinsicKind) {
+        if(typeof(attribute) === "string"){
+            if(attribute in Intrinsic._strToKind)
+                this._data &= ~Intrinsic._strToKind[attribute];
+        }else{
+            this._data &= ~attribute;
+        }
+    }
+
+    setAttribute(attribute : string) : [ boolean, string ]{
+        if(attribute.length === 0){
+            return [false, "Parsing Error: found the length of intrinsic to be 0."];
+        }
+        if(attribute[0] === '@'){
+            if(!(attribute in Intrinsic._strToKind)) return [false, "no such intrinsic found"];
+            this.setBit(attribute);
+        }
+        return [true,""];
+    }
+
+    clearAll() : void {
+        this._data = IntrinsicKind.None;
+    }
+
+    isSet(attribute : string | IntrinsicKind) : boolean {
+        if(typeof(attribute) === "string"){
+            if(attribute in Intrinsic._strToKind)
+                return ( this._data & Intrinsic._strToKind[attribute] ) != 0;
+        }else{
+            return (this._data & attribute) != 0;
+        }
+
+        return false;
+    }
+
+    hasEscape() : boolean{
+        return this.isSet(IntrinsicKind.Escape);
+    }
 }
 
 export class Ast{
@@ -16,14 +83,12 @@ export class Ast{
     private _anonNumber: number;
     private _depth : number;
     private _program? : ProgramBlock;
-    private _shouldEscapeEverythingInsideBlock: boolean;
 
     constructor(lexer : Lexer){
         lexer.parse();
         this._anonNumber = 0;
         this._depth = 0;
         this._tokens = new Tokens(lexer.tokens);
-        this._shouldEscapeEverythingInsideBlock = false;
         if(lexer.filename){
             this._filename = lexer.filename;
         }else{
@@ -74,6 +139,11 @@ export class Ast{
         this.parseBlock(this._program);
     }
 
+    private _setIntrinsic(intr : Intrinsic, attr : Token){
+        const res = intr.setAttribute(attr.text);
+        if(!res[0]) this.err(attr, res[1]);
+    }
+
     parseBlock(block: Block) : void{
         if(this._isKind(TokenKind.EOF)){
             return;
@@ -88,18 +158,20 @@ export class Ast{
         let body : ArrayOfBlockBodyType = [];
         let blockName = this._tok().text;
 
+        const intr : Intrinsic = new Intrinsic();
+
         if(blockName[0] === '!') {
-            attrs['@escape'] = '';
+            const sp = new Span(this._tok().loc.span.start, 1)
+            const loc = new Location(sp, this._tok().loc.col, this._tok().loc.line);
+            this._setIntrinsic(intr, new Token(TokenKind.Text, '@escape', loc));
             blockName = blockName.substring(1);
         }
     
         this._next();
-        this.parseAttributes(attrs);
+        this.parseAttributes(attrs, intr);
+        console.log(intr);
 
-
-        if("@escape" in attrs) this._shouldEscapeEverythingInsideBlock = true;
-        this.parseBody(body,blockName);
-        this._shouldEscapeEverythingInsideBlock = false;
+        this.parseBody(body,blockName, intr);
 
         block.addBlock(new Block(blockName, body, attrs));
         this.parseBlock(block);
@@ -113,11 +185,15 @@ export class Ast{
         let attrs : AttributesType = {};
         let body : ArrayOfBlockBodyType = [];
 
+        const intr : Intrinsic = new Intrinsic();
+
         if(tok.isKind(TokenKind.Text)){
             blockName = tok.text;
             this._next();
             if(blockName[0] === '!') {
-                attrs['@escape'] = '';
+                const sp = new Span(this._tok().loc.span.start, 1)
+                const loc = new Location(sp, this._tok().loc.col, this._tok().loc.line);
+                this._setIntrinsic(intr, new Token(TokenKind.Text, '@escape', loc));
                 blockName = blockName.substring(1);
             }
         }else{
@@ -125,16 +201,16 @@ export class Ast{
         }
     
 
-        this.parseAttributes(attrs);
+        this.parseAttributes(attrs, intr);
 
         if("@escape" in attrs) 
             this.err(this._tok(), "escape is not allowed inside block")
-        this.parseBody(body,blockName);
+        this.parseBody(body,blockName, intr);
 
         parentBody.push(new Block(blockName, body, attrs));
     }
     
-    parseAttribute(attrs: AttributesType): void{
+    parseAttribute(attrs: AttributesType, intr : Intrinsic): void{
         let key : string = "";
         let val : string = "";
 
@@ -145,6 +221,7 @@ export class Ast{
             if(!this._isKind(TokenKind.Text)){
                 this.err(this._tok(), `expected attribute key text, but found '${this._text(true)}'`)
             }
+            this._setIntrinsic(intr, this._tok());
             key = this._text();
             this._next();
             this._skipWhiteSpace();
@@ -192,7 +269,7 @@ export class Ast{
         return text.trim();
     }
     
-    parseAttributes(attrs: AttributesType): void{
+    parseAttributes(attrs: AttributesType, intr : Intrinsic): void{
         if(!this._isKind(TokenKind.LeftSquareBracket)){
             this._skipWhiteSpace()
             return;
@@ -203,7 +280,7 @@ export class Ast{
         this._while(TokenKind.RightSquareBracket, (tok : Token) => {
             this._skipWhiteSpace();
 
-            this.parseAttribute(attrs);
+            this.parseAttribute(attrs, intr);
             this._skipWhiteSpace();
             if(!this._isKind(TokenKind.RightSquareBracket)){
                 if(!this._isKind(TokenKind.Comma)){
@@ -248,7 +325,7 @@ export class Ast{
         return false;
     }
     
-    parseBodyAsString(blockKind : string): [string,boolean]{
+    parseBodyAsString(blockKind : string, intr : Intrinsic): [string,boolean]{
         let text: string = "";
         let hasEndBlock = false;
         while(!this._tokens.isEmpty()){
@@ -256,19 +333,19 @@ export class Ast{
                 this.err(this._tok(), "found extra '}', or maybe you are missing '{'");
             }
 
-            if(this._isKind(TokenKind.Escape) && !this._shouldEscapeEverythingInsideBlock) {
+            if(this._isKind(TokenKind.Escape) && !intr.hasEscape()) {
                 this._next(false);
                 text += this._text();
                 
             }else if(this._isKind(TokenKind.RightCurlyBrace)) {
                 hasEndBlock = this.parseEndBlock(blockKind);
                 if( hasEndBlock ) break;
-                if(!this._shouldEscapeEverythingInsideBlock && this._depth == 0) break;
+                if(!intr.hasEscape() && this._depth == 0) break;
                 text += "}";
             }else if(this._isKind(TokenKind.RightCurlyBrace) && this._depth != 0) {
                 --this._depth;
                 text += "}";
-            }else if(this._isKind(TokenKind.Dollar) && !this._shouldEscapeEverythingInsideBlock) {
+            }else if(this._isKind(TokenKind.Dollar) && !intr.hasEscape()) {
                 return [text,false];
             }else if(this._isKind(TokenKind.LeftCurlyBrace)) {
                 ++this._depth;
@@ -285,7 +362,7 @@ export class Ast{
         return [text,hasEndBlock];
     }
     
-    parseBody(blocks: ArrayOfBlockBodyType, blockKind: string): void{
+    parseBody(blocks: ArrayOfBlockBodyType, blockKind: string, intr : Intrinsic): void{
         if(!this._isKind(TokenKind.LeftCurlyBrace)){
             this.err(this._tok(), `expected '{', but found '${this._text(true)}'`);
         }
@@ -299,7 +376,7 @@ export class Ast{
         }
         let hasEndBlock = false;
         this._while(TokenKind.RightCurlyBrace, (tok : Token) => {
-            const temp = this.parseBodyAsString(blockKind);
+            const temp = this.parseBodyAsString(blockKind, intr);
             const text = temp[0];
             hasEndBlock = temp[1];
             // console.log(text,hasEndBlock);
@@ -309,7 +386,7 @@ export class Ast{
                 prefix = "";
             }
 
-            if(!this._shouldEscapeEverythingInsideBlock && this._isKind(TokenKind.Dollar)){
+            if(!intr.hasEscape() && this._isKind(TokenKind.Dollar)){
                 this._next();
                 this.parseInterpolation(blocks);
                 // this._next(false);
