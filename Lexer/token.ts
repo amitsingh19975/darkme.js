@@ -146,6 +146,10 @@ export class Tokens{
         if(this.isEmpty()) return this._token[this._token.length - 1];
         return this._token[++this._curr_pos];
     }
+    
+    moveCursorBack() : void {
+        if(this._curr_pos) this._curr_pos--;
+    }
 
     peek(steps : number = 1) : Token | null{
         const len = this._token.length;
@@ -159,16 +163,36 @@ export class Tokens{
         return this._token.length <= this._curr_pos;
     }
 
-    match(pattern : Token[], skipWhiteSpace : boolean = true) : boolean{
+    private _makeMatchStringPred() {
+        return (text : string, tok : Token) => text == tok.text;
+    }
+
+    private _makeMatchTokenKindPred() {
+        return (kind : TokenKind, tok : Token) => tok.isKind(kind);
+    }
+
+    private _makeMatchTokenPred() {
+        return (t1 : Token, t2 : Token) => t1 === t2;
+    }
+
+    match(pattern : (TokenKind | string | Token)[], skipWhiteSpace : boolean = true) : boolean{
+        
+
         this.takeSnapshot();
         const len = this._token.length - this._curr_pos;
         if(pattern.length >= len) {
             this.restore();
             return false;
         }
+
         for(let t of pattern){
+            let pred : (l : any, r : Token) => boolean;
+            if(typeof(t) === "string") pred = this._makeMatchStringPred();
+            else if(t instanceof Token) pred = this._makeMatchTokenPred();
+            else pred = this._makeMatchTokenKindPred();
+
             if(skipWhiteSpace) this.skipWhileSpace();
-            if(this.isEmpty() || t != this.currTok()) {
+            if(this.isEmpty() || !pred(t, this.currTok())) {
                 this.restore();
                 return false;
             }

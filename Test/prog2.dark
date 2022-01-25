@@ -6,7 +6,7 @@ header[class: "header", id: "Blink"]{
 		$[1]{ Orange }
 		$[2]{ Tomato }
 		$[3]{ Mango }
-	}
+	}[list]
 }
 
 list[label: "Fruits"]{

@@ -169,7 +169,6 @@ export class Ast{
     
         this._next();
         this.parseAttributes(attrs, intr);
-        console.log(intr);
 
         this.parseBody(body,blockName, intr);
 
@@ -328,6 +327,7 @@ export class Ast{
     parseBodyAsString(blockKind : string, intr : Intrinsic): [string,boolean]{
         let text: string = "";
         let hasEndBlock = false;
+        
         while(!this._tokens.isEmpty()){
             if(this._depth < 0){
                 this.err(this._tok(), "found extra '}', or maybe you are missing '{'");
@@ -374,9 +374,11 @@ export class Ast{
             prefix = this.get_prefix(this._text());
             this._skipWhiteSpace();
         }
+
         let hasEndBlock = false;
-        this._while(TokenKind.RightCurlyBrace, (tok : Token) => {
+        while(!this._tokens.isEmpty()){
             const temp = this.parseBodyAsString(blockKind, intr);
+
             const text = temp[0];
             hasEndBlock = temp[1];
             // console.log(text,hasEndBlock);
@@ -392,9 +394,8 @@ export class Ast{
                 // this._next(false);
             }
             const isCurly = this._isKind(TokenKind.RightCurlyBrace);
-            if( hasEndBlock || isCurly ) return Loop.Break;
-            return Loop.Continue;
-        });
+            if( hasEndBlock || isCurly ) break;
+        };
         
         const isCurly = this._isKind(TokenKind.RightCurlyBrace);
         const isSq = this._isKind(TokenKind.RightSquareBracket);
